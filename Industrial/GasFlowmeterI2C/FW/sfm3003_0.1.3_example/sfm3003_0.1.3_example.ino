@@ -32,14 +32,14 @@
 #include "sfm3003.h"
 #include <stdio.h>
 
-int main() {
+void setup() {
 
     const char* driver_version = sfm_common_get_driver_version();
     if (driver_version) {
         printf("SFM driver version %s\n", driver_version);
     } else {
         printf("fatal: Getting driver version failed\n");
-        return -1;
+        return;
     }
 
     /* Initialize I2C bus */
@@ -105,5 +105,9 @@ int main() {
     }
 
     sensirion_i2c_release();
-    return 0;
+
+}
+
+void loop() {
+	
 }
