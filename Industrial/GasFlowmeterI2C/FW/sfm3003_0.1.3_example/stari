@@ -31,28 +31,30 @@
 
 #include "sfm3003.h"
 #include <stdio.h>
-#include <Wire.h>  // Biblioteka za I2C komunikaciju
-
-
-
-
 
 void setup() {
-    Serial.begin(9600);  // Inicijalizacija serijske komunikacije
 
-    Wire.begin();  // Inicijalizacija I2C komunikacije
-
-    /* Reset svih I2C uređaja */
-    int16_t error = sensirion_i2c_general_call_reset();
-    if (error) {
-        Serial.println("General call reset failed");
+    const char* driver_version = sfm_common_get_driver_version();
+    if (driver_version) {
+        printf("SFM driver version %s\n", driver_version);
+    } else {
+        printf("fatal: Getting driver version failed\n");
+        return;
     }
 
-    /* Sačekajte da se SFM3003 inicijalizuje */
-    delayMicroseconds(SFM3003_SOFT_RESET_TIME_US);
+    /* Initialize I2C bus */
+    sensirion_i2c_init();
+
+    /* Reset all I2C devices */
+    int16_t error = sensirion_i2c_general_call_reset();
+    if (error) {
+        printf("General call reset failed\n");
+    }
+    /* Wait for the SFM3003 to initialize */
+    sensirion_sleep_usec(SFM3003_SOFT_RESET_TIME_US);
 
     while (sfm3003_probe()) {
-        Serial.println("SFM sensor probing failed");
+        printf("SFM sensor probing failed\n");
     }
 
     uint32_t product_number = 0;
@@ -60,15 +62,13 @@ void setup() {
     error = sfm_common_read_product_identifier(SFM3003_I2C_ADDRESS,
                                                &product_number, &serial_number);
     if (error) {
-        Serial.println("Failed to read product identifier");
+        printf("Failed to read product identifier\n");
     } else {
-        Serial.print("product: 0x");
-        Serial.println(product_number, HEX);
-        Serial.print("serial: 0x");
+        printf("product: 0x%08x, serial: 0x", product_number);
         for (size_t i = 0; i < 8; ++i) {
-            Serial.print(serial_number[i], HEX);
+            printf("%x", serial_number[i]);
         }
-        Serial.println();
+        printf("\n");
     }
 
     SfmConfig sfm3003 = sfm3003_create();
@@ -76,12 +76,12 @@ void setup() {
     error = sfm_common_start_continuous_measurement(
         &sfm3003, SFM3003_CMD_START_CONTINUOUS_MEASUREMENT_AIR);
     if (error) {
-        Serial.println("Failed to start measurement");
+        printf("Failed to start measurement\n");
     }
 
-    /* Sačekajte prvu merenje. Možete sačekati SFM3003_MEASUREMENT_INITIALIZATION_TIME_US
-     * umesto SFM3003_MEASUREMENT_INITIALIZATION_TIME_US da biste dobili preciznije rezultate */
-    delayMicroseconds(SFM3003_MEASUREMENT_INITIALIZATION_TIME_US);
+    /* Wait for the first measurement to be available. Wait for
+     * SFM3003_MEASUREMENT_WARM_UP_TIME_US instead for more reliable results */
+    sensirion_sleep_usec(SFM3003_MEASUREMENT_INITIALIZATION_TIME_US);
 
     for (;;) {
         int16_t flow_raw;
@@ -90,29 +90,23 @@ void setup() {
         error = sfm_common_read_measurement_raw(&sfm3003, &flow_raw,
                                                 &temperature_raw, &status);
         if (error) {
-            Serial.println("Error while reading measurement");
+            printf("Error while reading measurement\n");
         } else {
             float flow;
             float temperature;
             error = sfm_common_convert_flow_float(&sfm3003, flow_raw, &flow);
             if (error) {
-                Serial.println("Error while converting flow");
+                printf("Error while converting flow\n");
             }
             temperature = sfm_common_convert_temperature_float(temperature_raw);
-            Serial.print("Flow: ");
-            Serial.print(flow, 3);  // Printuj do 3 decimale
-            Serial.print(" (");
-            Serial.print(flow_raw);
-            Serial.print(")  Temperature: ");
-            Serial.print(temperature, 2);  // Printuj do 2 decimale
-            Serial.print(" (");
-            Serial.print(temperature_raw);
-            Serial.print(")  Status: ");
-            Serial.println(status, HEX);  // Printuj u HEX formatu
+            printf(" Flow: %.3f (%4i) Temperature: %.2f (%4i) Status: %04x\n",
+                   flow, flow_raw, temperature, temperature_raw, status);
         }
     }
-}
 
+    sensirion_i2c_release();
+
+}
 
 void loop() {
 	
