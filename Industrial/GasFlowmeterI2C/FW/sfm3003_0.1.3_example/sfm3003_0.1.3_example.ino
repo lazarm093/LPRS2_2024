@@ -38,7 +38,7 @@
 
 
 void setup() {
-    Serial.begin(9600);  // Inicijalizacija serijske komunikacije
+    Serial.begin(115200);  // Inicijalizacija serijske komunikacije
 
     Wire.begin();  // Inicijalizacija I2C komunikacije
 
@@ -51,8 +51,18 @@ void setup() {
     /* Sačekajte da se SFM3003 inicijalizuje */
     delayMicroseconds(SFM3003_SOFT_RESET_TIME_US);
 
-    while (sfm3003_probe()) {
-        Serial.println("SFM sensor probing failed");
+	Serial.println(SFM3003_I2C_ADDRESS, HEX);
+	bool found_dev = false;
+    for(int i = 0; i < 10; i++) {
+    	found_dev = !sfm3003_probe();
+    	if(found_dev){
+    		break;
+    	}else{
+        	Serial.println("SFM sensor probing failed");
+    	}
+    }
+    if(!found_dev){
+    	return;
     }
 
     uint32_t product_number = 0;
@@ -109,6 +119,7 @@ void setup() {
             Serial.print(temperature_raw);
             Serial.print(")  Status: ");
             Serial.println(status, HEX);  // Printuj u HEX formatu
+            delay(500);
         }
     }
 }
