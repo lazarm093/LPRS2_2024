@@ -32,13 +32,19 @@
 #include "sfm3003.h"
 #include <stdio.h>
 #include <Wire.h>  // Biblioteka za I2C komunikaciju
+#include <LiquidCrystal.h>
+
+LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
 
 
 
 
 
 void setup() {
+
     Serial.begin(115200);  // Inicijalizacija serijske komunikacije
+    
+    lcd.begin(16, 2);  // Inicijalizacija LCD-a 2x16
 
     Wire.begin();  // Inicijalizacija I2C komunikacije
 
@@ -119,7 +125,17 @@ void setup() {
             Serial.print(temperature_raw);
             Serial.print(")  Status: ");
             Serial.println(status, HEX);  // Printuj u HEX formatu
+
+            lcd.setCursor(0, 0);
+            lcd.print("Flow: ");
+            lcd.print(flow, 1);  // Možete prilagoditi broj decimala
+            lcd.print(" ");
+            lcd.setCursor(0, 1);
+            lcd.print("Temp: ");
+            lcd.print(temperature, 2);  // Možete prilagoditi broj decimala
             delay(500);
+
+            
         }
     }
 }
